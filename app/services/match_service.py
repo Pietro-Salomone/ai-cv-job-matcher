@@ -1,8 +1,10 @@
+from app.ai.openai_client import OpenAIMatchAnalyzer
+from app.core.config import settings
 from app.models.match_models import (
+    DifficultyLevel,
     Gap,
     ImpactLevel,
     InterviewQuestion,
-    DifficultyLevel,
     MatchAnalysisRequest,
     MatchAnalysisResponse,
     MatchLevel,
@@ -17,10 +19,18 @@ def analyze_cv_job_match(request: MatchAnalysisRequest) -> MatchAnalysisResponse
     """
     Analyze the match between a CV and a job description.
 
-    In this first version, this function returns a mocked response.
-    Later, this will call the OpenAI API.
+    If AI_PROVIDER=openai, this function calls the OpenAI API.
+    Otherwise, it returns a mocked response.
     """
 
+    if settings.ai_provider == "openai":
+        analyzer = OpenAIMatchAnalyzer()
+        return analyzer.analyze(request)
+
+    return _build_mock_response()
+
+
+def _build_mock_response() -> MatchAnalysisResponse:
     return MatchAnalysisResponse(
         match_score=78,
         match_level=MatchLevel.good,
