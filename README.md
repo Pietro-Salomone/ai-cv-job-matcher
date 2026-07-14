@@ -73,8 +73,11 @@ ai-cv-job-matcher/
 │   ├── test_match_api.py
 │   └── test_match_api_errors.py
 │
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
+├── compose.yaml
+├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```
@@ -145,6 +148,72 @@ OPENAI_MODEL=gpt-4o-mini
 ```
 
 Do not commit your `.env` file.
+
+The `.env` file is intended for local development only. In production, inject
+configuration and secrets through your platform's secret manager or runtime
+environment variables. Do not bake secrets into Docker images.
+
+## Docker
+
+### Prerequisites
+
+- Docker Engine with Compose support
+- No `.env` file is required to start in mock mode
+
+### Build and run with Docker
+
+Build the image:
+
+```bash
+docker build -t ai-cv-job-matcher:local .
+```
+
+Run in mock mode:
+
+```bash
+docker run --rm -p 8000:8000 -e AI_PROVIDER=mock ai-cv-job-matcher:local
+```
+
+Run with OpenAI at runtime (provide the API key via environment, never in the image):
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e AI_PROVIDER=openai \
+  -e OPENAI_API_KEY=your_api_key_here \
+  ai-cv-job-matcher:local
+```
+
+### Run with Docker Compose
+
+Start the API:
+
+```bash
+docker compose up --build
+```
+
+Stop the stack:
+
+```bash
+docker compose down
+```
+
+View logs:
+
+```bash
+docker compose logs api
+```
+
+Compose defaults to `AI_PROVIDER=mock` when no `.env` file is present. To use
+OpenAI, set `AI_PROVIDER=openai` and `OPENAI_API_KEY` in your shell or a local
+`.env` file used only at runtime by Compose.
+
+### Endpoints
+
+- Health check: http://127.0.0.1:8000/health
+- Swagger UI: http://127.0.0.1:8000/docs
+
+The container runs as a non-root user, exposes port `8000`, and writes structured
+JSON logs to stdout.
 
 ## Run the API
 
@@ -353,7 +422,7 @@ The OpenAI provider is isolated in the `app/ai` layer. This keeps the AI integra
 - [x] API tests
 - [x] Improve prompt quality
 - [x] Add structured logging
-- [ ] Add Docker support
+- [x] Add Docker support
 - [ ] Add GitHub Actions CI
 - [ ] Add optional persistence layer
 - [ ] Add simple frontend or demo UI
