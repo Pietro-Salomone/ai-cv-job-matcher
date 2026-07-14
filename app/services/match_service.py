@@ -1,4 +1,8 @@
+import logging
+import time
+
 from app.ai.openai_client import OpenAIMatchAnalyzer
+from app.ai.prompts import PROMPT_VERSION
 from app.core.config import settings
 from app.models.match_models import (
     DifficultyLevel,
@@ -14,6 +18,8 @@ from app.models.match_models import (
     StudyPlanItem,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def analyze_cv_job_match(request: MatchAnalysisRequest) -> MatchAnalysisResponse:
     """
@@ -22,12 +28,50 @@ def analyze_cv_job_match(request: MatchAnalysisRequest) -> MatchAnalysisResponse
     If AI_PROVIDER=openai, this function calls the OpenAI API.
     Otherwise, it returns a mocked response.
     """
+    provider = settings.ai_provider
+    start = time.perf_counter()
+
+    logger.info(
+        "Match analysis started",
+        extra={
+            "event": "match_analysis_started",
+            "provider": provider,
+            "prompt_version": PROMPT_VERSION,
+            "language": request.language,
+        },
+    )
+    logger.debug(
+        "Match analysis input metadata",
+        extra={
+            "event": "match_analysis_started",
+            "provider": provider,
+            "prompt_version": PROMPT_VERSION,
+            "language": request.language,
+            "cv_length": len(request.cv_text),
+            "job_description_length": len(request.job_description_text),
+        },
+    )
 
     if settings.ai_provider == "openai":
         analyzer = OpenAIMatchAnalyzer()
-        return analyzer.analyze(request)
+        response = analyzer.analyze(request)
+    else:
+        response = _build_mock_response()
 
-    return _build_mock_response()
+    duration_ms = round((time.perf_counter() - start) * 1000, 2)
+
+    logger.info(
+        "Match analysis completed",
+        extra={
+            "event": "match_analysis_completed",
+            "provider": provider,
+            "match_score": response.match_score,
+            "match_level": response.match_level.value,
+            "duration_ms": duration_ms,
+        },
+    )
+
+    return response
 
 
 def _build_mock_response() -> MatchAnalysisResponse:

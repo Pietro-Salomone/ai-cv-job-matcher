@@ -50,7 +50,13 @@ ai-cv-job-matcher/
 │   │
 │   ├── core/
 │   │   ├── __init__.py
-│   │   └── config.py
+│   │   ├── config.py
+│   │   ├── logging_config.py
+│   │   └── logging_context.py
+│   │
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   └── request_logging.py
 │   │
 │   ├── models/
 │   │   ├── __init__.py
@@ -116,6 +122,7 @@ Create a `.env` file starting from `.env.example`.
 AI_PROVIDER=mock
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
+LOG_LEVEL=INFO
 ```
 
 Available providers:
@@ -344,8 +351,8 @@ The OpenAI provider is isolated in the `app/ai` layer. This keeps the AI integra
 - [x] OpenAI integration
 - [x] Error handling
 - [x] API tests
-- [ ] Improve prompt quality
-- [ ] Add structured logging
+- [x] Improve prompt quality
+- [x] Add structured logging
 - [ ] Add Docker support
 - [ ] Add GitHub Actions CI
 - [ ] Add optional persistence layer
