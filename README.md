@@ -1,7 +1,8 @@
 # AI CV / Job Matcher
 
-AI CV / Job Matcher is a Python backend API that compares a candidate CV with a job description and returns a structured analysis of the match.
+![CI](https://github.com/Pietro-Salomone/ai-cv-job-matcher/actions/workflows/ci.yml/badge.svg)
 
+AI CV / Job Matcher is a Python backend API that compares a candidate CV with a job description and returns a structured analysis of the match.
 The project is built with FastAPI, Pydantic and OpenAI API integration.
 
 ## Features
@@ -66,6 +67,10 @@ ai-cv-job-matcher/
 │       ├── __init__.py
 │       ├── exceptions.py
 │       └── match_service.py
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 │
 ├── tests/
 │   ├── __init__.py
@@ -214,6 +219,28 @@ OpenAI, set `AI_PROVIDER=openai` and `OPENAI_API_KEY` in your shell or a local
 
 The container runs as a non-root user, exposes port `8000`, and writes structured
 JSON logs to stdout.
+
+## Continuous Integration
+
+GitHub Actions runs the CI workflow on:
+
+- push to `main`;
+- pull requests targeting `main`;
+- manual trigger via `workflow_dispatch`.
+
+The pipeline has two jobs:
+
+1. **Python tests** — installs dependencies on Python 3.13, sets
+   `AI_PROVIDER=mock`, and runs `python -m pytest -v`. No OpenAI API key is
+   required and no call to OpenAI is made.
+2. **Docker build and smoke test** — runs only after tests pass. Builds the
+   Docker image, verifies the container runs as a non-root user, starts the
+   container in mock mode, and checks `GET /health` with retries.
+
+The CI pipeline does not publish Docker images, does not deploy, and does not
+use repository secrets.
+
+Workflow file: `.github/workflows/ci.yml`
 
 ## Run the API
 
@@ -423,7 +450,7 @@ The OpenAI provider is isolated in the `app/ai` layer. This keeps the AI integra
 - [x] Improve prompt quality
 - [x] Add structured logging
 - [x] Add Docker support
-- [ ] Add GitHub Actions CI
+- [x] Add GitHub Actions CI
 - [ ] Add optional persistence layer
 - [ ] Add simple frontend or demo UI
 
