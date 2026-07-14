@@ -344,7 +344,7 @@ The OpenAI provider is isolated in the `app/ai` layer. This keeps the AI integra
 - [x] OpenAI integration
 - [x] Error handling
 - [x] API tests
-- [x] Improve prompt quality
+- [ ] Improve prompt quality
 - [ ] Add structured logging
 - [ ] Add Docker support
 - [ ] Add GitHub Actions CI
