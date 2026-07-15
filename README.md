@@ -19,6 +19,10 @@ The project is built with FastAPI, Pydantic and OpenAI API integration.
 - Return validated JSON responses using Pydantic
 - Support mock mode for local development and testing
 - Support OpenAI mode for real AI-generated analysis
+- Map AI provider failures to clear HTTP error responses
+- Structured JSON logging with configurable `LOG_LEVEL`
+- Request correlation via `X-Request-ID` header
+- Versioned prompt design (`PROMPT_VERSION=v2`)
 
 ## Tech Stack
 
@@ -28,6 +32,7 @@ The project is built with FastAPI, Pydantic and OpenAI API integration.
 - OpenAI API
 - Uvicorn
 - pytest
+- httpx
 - python-dotenv
 - pydantic-settings
 
@@ -73,10 +78,12 @@ ai-cv-job-matcher/
 │       └── ci.yml
 │
 ├── tests/
-│   ├── __init__.py
 │   ├── conftest.py
+│   ├── test_logging.py
 │   ├── test_match_api.py
-│   └── test_match_api_errors.py
+│   ├── test_match_api_errors.py
+│   ├── test_prompts.py
+│   └── test_request_logging.py
 │
 ├── .dockerignore
 ├── .env.example
@@ -217,8 +224,9 @@ OpenAI, set `AI_PROVIDER=openai` and `OPENAI_API_KEY` in your shell or a local
 - Health check: http://127.0.0.1:8000/health
 - Swagger UI: http://127.0.0.1:8000/docs
 
-The container runs as a non-root user, exposes port `8000`, and writes structured
-JSON logs to stdout.
+The container uses a multi-stage Dockerfile, runs as a non-root user (`uid=10001`),
+exposes port `8000`, includes a Docker `HEALTHCHECK` on `/health`, and writes
+structured JSON logs to stdout.
 
 ## Continuous Integration
 
@@ -245,7 +253,7 @@ Workflow file: `.github/workflows/ci.yml`
 ## Run the API
 
 ```bash
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 Open Swagger UI:
@@ -376,11 +384,15 @@ pytest -v
 The test suite covers:
 
 - health check endpoint
-- successful match analysis response
+- successful mock match analysis response
 - request validation
-- AI provider quota error handling
-- AI provider configuration error handling
-- generic AI provider error handling
+- AI provider quota, configuration, and generic error handling
+- prompt construction, version, and injection-protection rules
+- JSON log formatting, idempotent logging setup, and sensitive-data exclusions
+- request ID middleware and `X-Request-ID` header behavior
+
+Docker build and smoke testing run in GitHub Actions CI; they are not part of the
+local pytest suite.
 
 ## Error Handling
 
@@ -405,7 +417,8 @@ Used for local development and tests.
 AI_PROVIDER=mock
 ```
 
-This mode returns a deterministic mocked response.
+This mode returns a fixed deterministic mock response. It does not analyze the
+request payload.
 
 ### OpenAI Mode
 
@@ -439,34 +452,49 @@ The mock provider allows the API and the tests to work without external dependen
 
 The OpenAI provider is isolated in the `app/ai` layer. This keeps the AI integration separate from the FastAPI routes and application logic.
 
-## Roadmap
+## Prompt Design
 
-- [x] FastAPI project setup
-- [x] Pydantic request/response models
-- [x] Mock match analysis endpoint
-- [x] OpenAI integration
-- [x] Error handling
-- [x] API tests
-- [x] Improve prompt quality
-- [x] Add structured logging
-- [x] Add Docker support
-- [x] Add GitHub Actions CI
-- [ ] Add optional persistence layer
-- [ ] Add simple frontend or demo UI
+The match analysis prompt is defined in `app/ai/prompts.py` with
+`PROMPT_VERSION = "v2"`.
+
+Key design choices:
+
+- **Evidence-based analysis** — conclusions must come only from the CV and job description; missing evidence uses cautious phrasing such as *not evident in the CV*.
+- **Scoring rubric** — 100-point rubric across main/complementary technical skills, seniority, soft skills, and transferable strengths; fixed mapping from score to `match_level`.
+- **Output limits** — capped counts for gaps, suggestions, interview questions, and study-plan items.
+- **Prompt injection protection** — CV and job description are wrapped in `<CV>` / `<JOB_DESCRIPTION>` delimiters and treated as untrusted input.
+- **Structured output** — OpenAI `responses.parse(..., text_format=MatchAnalysisResponse)` enforces the Pydantic response schema.
+
+## Structured Logging
+
+Logging is configured in `app/core/logging_config.py` and initialized from
+`app/main.py`.
+
+- Each log line is JSON written to stdout via a custom `JsonFormatter`.
+- Fields include `timestamp`, `level`, `logger`, `message`, and `request_id`.
+- Optional structured fields such as `event`, `method`, `path`, `status_code`,
+  `duration_ms`, `provider`, `model`, `match_score`, and `prompt_version` are
+  included when present.
+- `LOG_LEVEL` controls verbosity (default `INFO`).
+- `RequestLoggingMiddleware` assigns or preserves `X-Request-ID`, returns it in
+  the response, and logs request duration.
+- CV text, job description text, API keys, and full model responses are not
+  logged.
+
+## Implemented Milestones
+
+- FastAPI project setup
+- Pydantic request/response models
+- Mock match analysis endpoint
+- OpenAI integration
+- Error handling
+- API tests
+- Improve prompt quality
+- Structured logging
+- Docker support
+- GitHub Actions CI
 
 ## Useful Commands
-
-Run the API:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Run tests:
-
-```bash
-pytest -v
-```
 
 Check tracked files:
 
